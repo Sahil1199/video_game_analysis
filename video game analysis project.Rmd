@@ -1,0 +1,603 @@
+---
+title: "Video Game Analysis" 
+author: "Sahil Kumar" 
+date: "`r format(Sys.time(), '%d %B, %Y')`" 
+output: 
+  word_document: 
+    toc: yes
+    fig_width: 10
+  html_document: 
+    pdf_document: 
+      word_document: null 
+    theme: flatly 
+    toc: yes 
+    toc_float: yes 
+    code_download: yes 
+  pdf_document: 
+    toc: yes 
+editor_options: 
+  chunk_output_type: console
+--- 
+
+```{r setup, include=FALSE, cache = F} 
+knitr::opts_chunk$set( 
+echo = TRUE, 
+error = TRUE, 
+warning= FALSE, 
+ message= FALSE) 
+``` 
+
+  
+
+# Introduction 
+
+Aside from movies, video games are my favorite hobby ( I am quite the nerd). So, I found this data set online, I was really interested in analyzing it. Although, I do wish that the data set had more variables such as budget or average length of the game, I was still happy with the data set and I think the data set will be sufficient in my analysis. The question that I will try to answer is which video games tend to have the most sales. What I mean by that is which variables have the most impact on sales. This is important to know because then video game developers know which games to make and sell. What type of game should they make and for what console which will make them the most money. I will do this analysis by tidying, manipulating, and visualizing many variables in the data set.  
+
+
+```{r}
+library(moderndive)
+library(gapminder)
+library(skimr)
+library(ISLR)
+library(tidyverse)
+library(readr) 
+
+video_game_data <- read_csv("Video_Games_Sales_as_at_22_Dec_2016.csv") 
+
+View(video_game_data)
+
+video_game_data
+ 
+
+```
+
+These are the code I used to import the original excel dataset in to RStudio and to convert the cvs file so that RStudio can read it. I also renamed the dataset to video_game_data so it is easier to write later. I also loaded the tidyverse package above. 
+
+
+## Tidying the data 
+
+I looked at the data set and saw that all that the data already seems to be tidy because the three rules are met in my data set. Each variable has its own column, each observation (each movie in my case) has its own row, and each value has its own cell. 
+
+# Variables
+
+To do my analysis and to make proper manipulations to my data, I need to know more about my data. After looking through the dataset, I decided the variable i will be using as my dependant variable will be Global_Sales because that is the total sales of the other sales columns (NA_Sales, EU_Sales, JP_Sales, and Other_Sales). Since these columns are already being used to calculate Global_Sales, I will not be using these columns in my analysis. I will also not be using user_count and critic_count because they are just the number of people (user and critic) who gave the score.
+
+```{r}
+new_data <- select(video_game_data, -(NA_Sales | EU_Sales | JP_Sales | Other_Sales | User_Count | Critic_Count))
+
+View(new_data)
+```
+
+
+
+
+
+# Exploration
+After I knew what columns are in the dataset and which ones I have to run my further analysis on, the next thing I needed to do was run some descriptive stats on the columns to know more about them.  
+
+## Global_Sales
+
+```{r}
+new_data %>%
+  
+  filter(!is.na(Global_Sales))%>% 
+  summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales))
+ 
+  
+ ggplot(new_data)+
+  geom_point(mapping=aes(y=Global_Sales, x=Name))
+  
+  
+ 
+select(new_data, Name | Global_Sales | Year_of_Release | Platform ) %>% 
+   arrange(desc(Global_Sales))
+
+filter_data <-  filter(new_data, Global_Sales<60) 
+
+filter_data %>% 
+  filter(!is.na(Global_Sales))%>% 
+  summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales)) 
+
+
+ ggplot(filter_data)+
+  geom_point(mapping=aes(y=Global_Sales, x=Name))
+ 
+select(filter_data, Name | Global_Sales | Year_of_Release | Platform ) %>% 
+   arrange(desc(Global_Sales))
+ 
+
+```
+ 
+ After running the descrpiptive stats for Global_Sales, I found out that the the average sales across the world were 534,000 (0.534*1,000,000), the median Global_Sales were 170,000, the maximum Global_Sales were 82,000,000, the minimum sales were 10,000, and the standard deviation was 1,550,000. What the standard deviation tells me is that the sales of games is quite far from the mean. This could be because of the sheer amount of games that are in the data, from different platforms, years, and different ESRB ratings. The maximum sales is also quite large. it is also much larger than the mean, this could be the reason for the high standard deviation. This tells me that not a lot of games will have that high amount of sales. The minimum sales is also much less than the mean and the max which tells me the sales of games will have a large range. What the median tells me is that the game with the sales that is in the middle of the data set has sold 170,000 units. What this tells me that half of the video games sales are above 170,000 and half are less. With my arrange function above, I found out that the top 10 games with the most sales are all on Nintendo's consoles and none of the games are from the past ten years. This gives me an idea that Year_of_Release and Platform will have an affect in Global_Sales. I also made a scatter plot to see where the sales amount of most games lie and I found out that the majority of the games sales are below 20 million. There was only one game that really stood out which was Wii sports which was released for the Wii in 2006. This makes me wonder if most of the games released for the Wii will have high sales or if most games released in 2006 will have a high amount of sales? To make sure my further analysis is less skewed, I decided to remove "Wii Sports" from the data set because that has a Global_Sales 42 million more than the rest of my observations. After removing Wii Sports, I saw that my standard deviation had gone down to 1.41 from 1.55. I also noticed that the rest of my observations were closer in term of Global_Sales. I also noticed that the top 10 games with the highest Global_Sales were still on Nintendo's platforms. This tells me that even without me that even without "Wii Sports", the publisher with the highest sales might be Nintendo. 
+
+## Platform
+```{r}
+  Plat_data <- filter_data %>% 
+  group_by(Platform) %>% 
+  filter(!is.na(Platform))%>% 
+   filter(!is.na(Global_Sales)) %>% 
+  summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales),
+ count=n()) %>% 
+arrange(desc(average_GB_sales))
+Plat_data
+  
+
+ggplot(Plat_data) +
+  geom_point(mapping=aes(y=average_GB_sales,x=count, color=Platform)) 
+   
+    
+ggplot(filter_data)+
+  geom_bar(mapping=aes(y=Platform), color="blue")  
+
+filter_data_2 <- filter(Plat_data, count>100) 
+filter_data_2
+  
+ggplot(filter_data_2) +
+  geom_point(mapping=aes(y=average_GB_sales,x=count, color=Platform))
+
+filer_data3 <- filter(filter_data, Platform == "SNES" |Platform == "PS4"| Platform == "X360"| Platform == "2600"| Platform =="PS3"| Platform =="N64"| Platform =="XONE"| Platform == "Wii"| Platform =="PS"| Platform =="PS2"|Platform =="WiiU"| Platform =="3DS"| Platform =="GBA"| Platform == "DS"|Platform =="GC"| Platform =="XB"| Platform =="PC"| Platform =="PSP"| Platform =="SAT"| Platform =="PSV")
+
+
+  
+
+```
+ 
+After running the code above, I found out that the platform with the most average sales is the Game Boy, in fact, the top 4 platforms are all from Nintendo. This makes me think that Nintendo will have the games with the most sales. I also found out that there are 31 platforms in my data set but there are many platforms that have very few games in it. The Game Boy has only 98 games in it while other consoles like the Wii and the PS3 have more than 1000 games in it. The  The Game Boy has the highest average sales even though it does not have that many sales as compared to other platforms like the wii and ps3. This tells me that it has one or two games with a high sales amount that gives it a high average but it does not not have many games with high sales, just a couple games with extreme values. This also seems to be the same case for the NES and GEN as the they have even less games but are high in terms of average sales. They also have a high standard deviation. In the bar chart, you could see that most platforms have more than 100 games in it. With the scatter plot, you could see that the GEN, Game Boy, and NES are really high in sales but have little sales, while most of the other platforms are all closer to each other in sales and have a good amount of games in them. For those reasons, I decided to filter out all platforms that have less than 100 games in them. I removed 11 platforms with a total of 20 platforms remaining. I remade the scatterplot and saw that the average sales for the platforms were now more closer together without any extreme values. After running the analysis on Platform, I came to a conclusion that Platform does have an effect on Global_Sales. I can see that the top 3 platforms that have the highest average sales are the SNES, PS4, and the XBOX 360 but the Xbox 360 has  much more games in it while having a high average sales. I will now see if other variables such as year of release and genre have an influence on these results 
+
+## Year_of_Release
+```{r}
+
+ filer_data3 %>%
+  filter(Year_of_Release!="N/A") %>% 
+   filter(!is.na(Year_of_Release))%>% 
+  arrange(desc(Year_of_Release)) %>% 
+  summarise(max_release = max(Year_of_Release), min_release = min(Year_of_Release)) 
+
+ filer_data3 %>%
+filter(Year_of_Release!="N/A") %>%
+  ggplot +
+  geom_point(mapping = aes(y=Year_of_Release, x=Name), color="RED")
+ggplot(filer_data3) +
+  geom_bar(mapping = aes(y=Year_of_Release))
+
+ year_stats <- filer_data3 %>%
+  filter(Year_of_Release!="N/A") %>% 
+   filter(!is.na(Year_of_Release)) %>% 
+   group_by(Year_of_Release) %>% 
+   summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales), count=n()) %>% 
+   arrange(count)  
+ year_stats
+
+   filter(filer_data3, Year_of_Release=="1990"|Year_of_Release=="1980")
+
+ ggplot(year_stats) +
+   geom_point(mapping = aes(y=Year_of_Release, x=average_GB_sales))
+
+ arrange(year_stats, desc(average_GB_sales)) 
+
+
+filter(year_stats, count>9) %>% 
+   ggplot +
+  geom_point(mapping = aes(x=average_GB_sales, y=Year_of_Release, size=count), color="PURPLE")
+
+
+ggplot(filter_data5)+
+  geom_point(mapping=aes(y=Year_of_Release, x=Global_Sales, color=Platform))
+
+filter_data5 <- filter(filer_data3, !(Year_of_Release==1984|Year_of_Release==2020|Year_of_Release==1986|Year_of_Release==1989|Year_of_Release==1985|Year_of_Release==1988|Year_of_Release==2017|Year_of_Release==1990|Year_of_Release==1987|Year_of_Release==1980|Year_of_Release=="N/A")) 
+
+
+```
+
+After running the codes above, the first thing that I found out was that I have games from 1980 to 2020. There were also games that had missing values but instead of there being empty cells that RStudio fills in with NA, the empty cells had "N/A" written in them. After removing the missing values, I made a scatter plot to see which years had very little games released. I also made a bar chart to get a better picture how many games are in each year and to see if most the years have around the same amount of games in them. Before removing any observations, I ran the  descriptive stats for Global Sales and grouped them by year of release. first, I arranged them by count to see which years had very little games released and to see what were the average sales for them. I saw that 10 years had less than 10 games in them. I saw that those 10 games weren't that high in terms of average global sales which makes sense as they do not have many games which results in a low average sales but what stood out to me was 1990 because of the high average global sales. it had a average global sales of 6.54 while the other years with a low amount of games have an average sales of less than 1 except 1980. The standard deviation for both 1980 and 1990 also have a high standard deviation, 1980 has a standard deviation of 1.38 a max sales of over 4 million and 1990 has a standard deviation of 9.41 and a max of 20 million. The high average sales of those 2 years is a result of a couple of games in those years with a high sales amount, especially 1990 which has a game with 20.6 million sales which I found out with my filter function. I also made a scatter plot to see the what the sales of each year looked like and that confirmed that the average sales of 1990 was an outlier. Apart from 1990, it looks like 1992 is the year with the highest average sales. lastly, before removing years from my analysis, I arranged the descriptive stats in term of of the highest average sales to see if  some of the years that have the highest average sales are also the years that have the least amount of sales and to see how many games do the years with the high average sales have. I saw that 1990 was had the highest average sales but has only 4 games. Apart from 1990 and 1980, all the games in that list had a count of more than 10 and the year with the highest average sales still seemed to be 1992. I filtered my data to include only games that had a year of release that sold more than 9 games. That left me with 29 years. It also showed that the year with the most sales was 1992 followed by 1993 with a count of 26 and 46 respectively. Although, 1992 and 1993 had the most average sales, it did not seem to be much and there were years that had more games but were still relatively high in average sales. To get a better picture, I made another scatter plot to show a relationship between year of release, average sales, and count. Bases of the scatter plot, I saw that in comparison to the other years and considering the amount of games in them, It looked like 2013 and 2001 had more individual games that have a higher sales amount. Year of release does in fact have a direct impact on global sales, it is not if newer games have more sales but different years have different amount of sales and there were certain years that were high in sales with a decent amount of games in them. I also wanted to see what platform did the years with highest global sales come out in and I found out that 2010 and 2009 had the most sales and it looks like the game with the highest sales came out on the Wii and DS and the years with the most sales are 2009 and 2010. We can also see why the average sales for 1992 is so high despite not having many games, it is because most the games in 1992 are on the SNES and we know from the analysis on platform, the SNES has the highest average sales. From this analysis, It looks like, Nintendo will also have a high average sales. I also filtered out those 10 years from my entire data set so I can use it for my further analysis.
+
+
+
+
+
+## Genre
+```{r}
+Genre_stat <- filter_data5 %>%
+   filter(!is.na(Genre)) %>% 
+   group_by(Genre) %>% 
+   summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales), count=n()) %>% 
+  arrange(desc(average_GB_sales))
+Genre_stat
+  
+  ggplot(filter_data5) +
+  geom_bar(mapping=aes(x=Genre), color="ORANGE")
+  
+   ggplot(Genre_stat)+
+    geom_col(mapping=aes(y=Genre, x= average_GB_sales, alpha=count), size=10)
+ 
+    
+     mutate_data <- filter_data5 %>%
+ group_by(Genre) %>% 
+  mutate(avg_sales=mean(Global_Sales)) 
+  
+     ggplot(mutate_data) +
+    geom_point(mapping=aes(x=avg_sales, y=Genre, color=Platform), size=10)
+    
+  
+```
+
+
+After running the codes above, the first thing I found out was that I have a total of 12 genres. From the descriptive stats arranged in terms of average sales, I learned that the average sales of each genre were all close to each other, meaning, one genre did not stand out with a average sales much higher than the rest. The standard deviation of all these genres also seems to be normal, there wasn't one genre that had a standard deviation much higher than the rest. I also made a bar graph to see how many games each genre had and which genre had the highest global sales. I found out that the action genre has the most games but each genre had a good amount of games in it. There was not a single genre that had less than 500 games in it and the genres with a lower game amount tend to have a smaller average sales. This tells me that no genre had one or two games with a high global sales amount that skewed the data. This told me that I did not need to remove any observations. I also made another bar graph to see which genre had the most sales keeping the amount of games in each genre in mind. By looking at the graph, I found out that the genre with the most average sales was Platform with shooter being right behind it. Those two genres also had a decent amount of sales in them. I also wanted to see what platform were the majority of games on for each genre. To do this, I first made mutated my data to include average sales as a column in the entire data set. I then made a scatter plot to see this relationship. I saw that the majority of games on the platform genre were on the Game Boy advances. This look promising for Nintendo as the Game Boy Advance is one of Nintendo's consoles.  
+
+
+
+
+## Publisher
+```{r}
+Pub_stat<- filter_data5 %>% 
+filter(!is.na(Publisher)) %>% 
+   group_by(Publisher) %>% 
+   summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales), count=n()) %>% 
+   arrange(desc(average_GB_sales)) %>% 
+ filter(count>=50) 
+Pub_stat
+   
+ggplot(Pub_stat) +
+  geom_point(mapping=aes(x=average_GB_sales, y=Publisher, alpha=count), size=10) 
+  
+
+  mutate_data3 <- filter_data5 %>%
+ group_by(Publisher) %>% 
+  mutate(count=n())
+  
+  filter_data6 <- mutate_data3 %>% 
+    filter(count>=50)
+  filter_data6
+  
+ mutate_data2 <- filter_data6 %>%
+ group_by(Publisher) %>% 
+  mutate(avg_sales=mean(Global_Sales))
+  
+  
+ggplot(mutate_data2) +
+  geom_col(mapping=aes(x=avg_sales, y=Publisher, color=Genre))
+
+
+
+ggplot(mutate_data2) +
+  geom_col(mapping=aes(x=avg_sales, y=Publisher, color=Platform))
+  
+ 
+clean_data <- mutate_data2 %>% 
+ungroup(Publisher) %>% 
+  select(!(count | avg_sales))
+  
+    
+
+
+
+
+
+```
+
+After running my analysis on Publisher, the first thing I found out was that there were 570 different publishers in the data set but just by looking at the descriptive stats, i noticed that some of the publishers had very few games, some publishers even had only 1 game. After trying to run many different types of charts to figure out the amount of games the different publishers had and to see how many sales they had to figure out what publishers should I remove from the observation, I was unsuccessful at making any legible charts due the large amount of publishers included in the data set. So, I decided that a publisher should have at least 50 games for it to be relevant in my analysis because if it is less than that it will either not be relevant because it will have a small average sales amount or it will have a large average sales amount which will skew my data. I removed all publishers that had less than 50 games under their belt. This narrowed my analysis to only 45 publishers. From there, I wanted to see what the average sales for these publishers looked like keeping their count in mind. So I made a scatter plot to visualize that and what I noticed that Nintendo had the highest average sales while still having more than 500 games in it. Microsoft Game Studios had the second highest average sales but it has less games than Nintendo. Sony Computer Entertainment also had a high average sales amount and had a decent amount of games as well. This makes sense as the SNES PS3 and the Xbox 360 were the consoles with the highest average sales and most games on those consoles are published by these publishers(Nintendo publishes most games for the SNES, Sony Entertainment System for the PS3, and Microsoft Game Studios for the Xbox 360.) I made a function so I have the count of each of the Publishers in my entire data set. I then used the filter function to remove those observations from my entire data set so it can be used in my further analysis. I also used a mutate function to see the average sales for those platforms in my entire data set.I made a scatter plot to visualize the different types of genres of each of the publishers. I saw that most of the publishers had a variety of different except EA. It seems like half of EA's game library includes sports game which makes sense to me as I know they make many sports games including FIFA and Madden. I also wanted to see the Platforms of each the publishers, I made another a bar graph to visualize that and I saw that Nintendo has a many different platforms, explaining the high amount of games and the high average sales. The last thing I did in this section was that I removed the two extra columns I made because I will not need them going forward and I ungrouped my data. 
+
+## Critic_Score
+```{r}
+
+ clean_data %>% 
+    filter(!is.na(Critic_Score)) %>% 
+ arrange(desc(Critic_Score)) 
+
+clean_data %>%  
+  filter(!is.na(Critic_Score)) %>% 
+  summarise(average_critic_score = mean(Critic_Score), median_critic_score = median(Critic_Score), max_critic_score = max(Critic_Score), min_critic_score = min(Critic_Score), s.d_critic_score = sd(Critic_Score))
+ 
+ 
+ clean_data %>% 
+   filter(!is.na(Critic_Score)) %>%
+ ggplot(mapping=aes(x=Critic_Score, y=Global_Sales)) +
+   geom_point()+
+   geom_smooth() 
+ 
+ clean_data %>% 
+ filter(!is.na(Critic_Score)) %>%
+ filter(Global_Sales>20) %>% 
+   arrange(desc(Critic_Score))
+ 
+ clean_data %>% 
+  filter(!is.na(Critic_Score)) %>%
+   ggplot +
+   geom_point(mapping=aes(x=Critic_Score, y=Global_Sales, color=Genre))+
+   facet_wrap(~Platform)
+
+  
+    
+```
+
+Critic Score is the score (out of 100) that critics from the gaming website Metacritic give. Before running my descriptive stats on critic score, I wanted to see  what games had the highest scores. After viewing the dataset, I saw that Grand Theft Auto 4 had the highest score both on the ps3 and xbox 360.  After running my descriptive stats critic score, I learned that that the average was 69.7 and the median was 71. This tells me that nost games were rated decently high. The median was also quite low meaning that most games scored around the mean. Next, I made a scatter plot to see the effect of the critic score on global sales. I learned that critic score has a direct effect on global sales, the higher the critic score was, the more sales it had. There were 12 games that were really high in both global sales and critic score, I wanted to see what those games were. With my filter function, I saw that that those games were Grand Theft Auto 5 for the ps3 was on the top and Grand Theft Auto San Andreas right below it. The first 2 games were from made by Rockstar and the rest were made by Nintendo besides from the first 2 games on the list, the rest had a rating of E. This tells me that Nintendo will likely be the developer with most sales and the rating with the most sales might be E. I also wanted to see what platform and what genre were the games with the highest Global Sales and highest critic score. In order to that, I made a scatter plot and faceted by platform. I leaned that the DS and Wii are the highest in terms of Global Sales and also are high in terms of Critic Score. The Xbox 360 and ps2 seem to be right behind it. I also saw that there was a mix of all genres in each platform. 
+
+## User_Score
+```{r}
+user_data <-  clean_data %>% 
+    filter(!is.na(User_Score)) %>% 
+    filter(User_Score!="tbd") %>% 
+  mutate(User_Score= as.numeric(User_Score)) %>% 
+  arrange(desc(User_Score)) 
+  user_data 
+   
+  
+  user_data %>% 
+    summarise(average_user_score = mean(User_Score), median_user_score = median(User_Score), max_user_score = max(User_Score), min_user_score = min(User_Score), s.d_user_score = sd(User_Score)) 
+    
+   ggplot(user_data) + 
+    geom_bar(mapping=aes(x=User_Score), color="GREEN")
+  
+  
+   
+  user_data %>% 
+ggplot(mapping=aes(x=User_Score, y=Global_Sales, color=Rating)) +
+   geom_point()
+  
+  
+  
+
+```
+User score is the score ranging from 1 to 10 regular players (not critics) give to a game on Metacritic. To start my analysis on user score, the first thing I did was remove the missing values and values and values that had tbd  meaning to be determined. After doing that my observations were cut in half, it went down from 12, 518 observations to 6, 380. I also arranged my data in terms of user score. What I saw surprised me since the games with the highest user score did not have that much sales. I think this probably because only a small amount if users actually rated the game and gave them high scores but they those games didn't sell that much. I then ran my descriptive stat on user data and I found out they seemed pretty normal, nothing really stood out. The average and median are closer to each other meaning that most games were rated quite highly. The standard deviation was also quite low telling me most games did score closer to 7. To visualize the distribution of the score, I made a bar chart. What I learned from the bar chart is that most games do score quite high. I also saw that a lot games tend to get around a 7.5 and that many games did not get a score lower than 5. I also wanted to visualize the affect of the user score on global sales and I wanted to see what ESRB rating the games with a high user score were. From the graph, I learned that user score has a direct effect on global sales. The higher the user score, the higher the sales amount tends to be, however, there were some games that had a low user score but still had a decent amount of sales. This tells me that there were probably only a couple user that rated that game and rated it negatively. I also found out that the games with the highest user score and global sales are rated E for everyone and M for mature. this makes perfect sense because if a game is rated E, it mean a lot of people can play it, especially kids, which mean those games can get sold to children as opposed to games rated T for teen or M for mature. M rated games also had the high sales and user scores, this makes sense to me because I play those games the most and those games are the ones that tend to have be higher budget games with deeper stories and more complex game play, which is why gamer would give those games a high score and that is also reflected in the sales. 
+
+
+## Developer
+```{r}
+
+
+  Dev_stat <- clean_data %>% 
+  group_by(Developer) %>% 
+  filter(!is.na(Developer))%>% 
+   filter(!is.na(Global_Sales)) %>% 
+  summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales),
+ count=n()) %>% 
+arrange(desc(average_GB_sales)) %>%
+  filter(average_GB_sales >= 1.0 & count >=10) 
+  Dev_stat
+
+   
+    ggplot(Dev_stat) +
+  geom_point(mapping=aes(x=average_GB_sales, y=Developer, alpha=count), size=12) 
+
+
+  
+  
+   mutate_data4 <- clean_data %>%
+ group_by(Developer) %>% 
+  mutate(count=n())
+ 
+  mutate_data5 <- mutate_data4 %>%
+ group_by(Developer) %>% 
+  mutate(avg_sales=mean(Global_Sales)) %>% 
+      filter(avg_sales >= 1.0 & count >=10) 
+
+    
+ ggplot(mutate_data5) +
+  geom_point(mapping=aes(x=avg_sales, y=Developer, color=Genre), size=12,) 
+ 
+```
+
+Developer are the actual studios that make the games instead of being the ones that sells the games like the publisher. Sometimes the publisher and the developer are the same company like Nintendo and Ubisoft. After running my descriptive stats and the first thing I noticed was that there were a whopping 1346 different developers and many of these studios did have a small amount of games but a developer does not usually make many games unless they are big company like Nintendo and the developers with a small games still had a high amount of average sales since many developers do make relatively small amount of games but they are really good and do sell a lot of units like Rockstar which has only 13 games but has over 8 million in average sales and they are known to be one of the best game developer. So, I could not just remove the studios that had small amount of games. So, I decided to focus my attention on only a smaller sample, I decided to only keep the games that have  1 million or more in average sales and had made at least 10 games. I did this because I wanted to see what Developers had the most sales. By doing this, I only had 28 developers left, The standard deviation was also quite high on the developers with a high average sales but I did not want to remove any of those developer because a developer usually does have one or two games that was really successful and sold many units. I wanted to visualize the average sales of each developer keeping the amount of games they have in mind. I made a scatter plot to visualize that and I saw that Rockstar North has the most average sales which is expected since I know the games they make sell a lot and Grand Theft Auto 4 and 5 (which are Rockstar games) were the one of the highest selling games on the PS3 and XBox 360. In fact, I know for a fact that Grand Theft Auto 5 is the second highest selling game of all time if we include all the platforms its been released on.  However, if we keep the amount of games they have in mind, Nintendo sold a lot of units while having almost 80 games compared to Rockstar's 13 games. This is not suprising to me as Nintendo is a much bigger and older company than Rockstar and it has games across much more Platforms. I also wanted to see what Genre  most of the games in each platform were. To do that I needed the average sales and count in my entire data set, I used the mutate functions above to accomplish that. To visualize what Genre  most of the games in each platform were, I made a scatter plot and I saw that Rockstar makes mostly action games which is not at all surprising as I played most of their games. I also saw that most of Nintendo's games are platform and that also makes sense they have a lot of games like Mario which is a platform game. 
+
+
+
+
+## Rating 
+```{r}
+  clean_data %>% 
+  group_by(Rating) %>% 
+  filter(!is.na(Rating))%>% 
+   filter(!is.na(Global_Sales)) %>% 
+  summarise(average_GB_sales = mean(Global_Sales), median_GB_sales = median(Global_Sales), max_GB_sales = max(Global_Sales), min_GB_sales = min(Global_Sales), s.d_GB_sales = sd(Global_Sales),
+ count=n()) %>% 
+arrange(desc(average_GB_sales)) %>% 
+   filter(!(count<=6))
+
+
+   mutate_data7 <- clean_data %>%
+ group_by(Rating) %>% 
+  mutate(count=n())
+ 
+  mutate_data8 <- mutate_data7 %>%
+ group_by(Rating) %>% 
+  mutate(avg_sales=mean(Global_Sales)) %>% 
+   filter(!is.na(Rating))%>% 
+    filter(!(count<=6)) 
+  
+  ggplot(mutate_data8) +
+   geom_point(mapping=aes(x=avg_sales, y=count, color=Platform, shape=Rating))+
+     facet_wrap(~Genre)
+  
+  modeling_data <- mutate_data8 %>% 
+ungroup(Rating) %>% 
+  select(!(count | avg_sales))
+  
+
+
+```
+
+Rating is the certain age range that are allowed to play these games. After running my descriptive stats for rating, I noticed that K-A (kids to adults)only has 2 games and A0 (adult 18+) only had one game and EC (Early Child Hood) only had 6 games. I decided to remove those Ratings from my analysis since there are not enough games in those ratings to make any decisions and there are barley any games with those ratings. After removing those two ratings, I noticed that M had the highest average sales with 1300 games in it. This was suprising to me as I though E would have more sales since those games are sold to more people and to buy a rated M game, you have to be at least 17 years old. 
+I also wanted see what genres the majority of games on each rating were and what platform  were the majority of them on. To do that I needed to bring count and average sales to my entire dataset and I did that by using the two mutate functions above. 
+I made a scatter plot faceted by genre to visualize that. By looking at the graph, I found out that the the rated M games were on different platforms for different genres. Majority of rated M action and adventure games were on PC while the majority of rated E games action were on the Wii. I also ungrouped the dataset and removed the two column I made. 
+
+
+
+# Conclusion 
+
+After running my entire analysis, I came to a conclusion that all the variables have some sort of effect on global sales. The variable that has the most direct affect on global sales is critic count and user score. The games that had a higher critic and user score had a global sales. Four of Nintendo's Platforms had the highest average sales. The most popular year that had the highest sales was 1992 and the most popular genre was Platform and shooters. The publisher that had the most sales was Nintendo and the developer with the most sales was Rockstar with Nintendo being the second highest sales. The rating that had the highest sales was M for mature and E for everyone. Based of my analysis, if a developer want to make a game that will get many sales, it is important it to be a platform or action game and if they are making it for make it for one of Nintendo's platforms. If not for Nintendo's Platform, then they have to make sure the game is rated M for mature and will attract an older audience. From this analysis, it was clear that Nintendo had made the most successful games with the highest global sales. Nintendo is one of the biggest game companies. They have been around for a long time and have made many consoles with many games. I am now now make some models. 
+
+
+# Modeling 
+
+After doing my exploration of the variables, It was time for me to make some models and see what is the strength of the relationship between Global_Sales and other variables in my dataset. 
+
+
+## Critic_Score
+```{r}
+modeling_data %>% 
+filter(!is.na(Critic_Score)) %>%  
+  select(Global_Sales, Critic_Score) %>% 
+  skim()
+
+```
+After I had done my initial exploration of critic score, I had figured out it does have an effect on global sales, but I needed to run regression to figure out exactly how much. I did not run descriptive stats because I had already done that in my exploration part previously. However, I did run the skim summary statistics to find out a little more about critic score. Apart from the mean and the standard deviation which I already know, I found out that the distribution for global sales is right skewed and critic score seems more normally distributed. The other new information I learned was that middle 50% of the sales are between 280,000 and 35,500,000 while the middle 50 of the critic scores are between 80 and 98. This tells me that half of the games in the data set had a decently high critic score while the global sales has a large range. 
+
+
+```{r}
+modeling_data %>%
+filter(!is.na(Critic_Score)) %>% 
+ get_correlation(formula=Global_Sales ~ Critic_Score)
+```
+I also used this function to get the correlation coefficient for the relationship between critic score and global sales. I found out that the correlation coefficient is 0.280. This coefficient value tells me that the relationship is weakly positive. A value 0.280 tells me that there is a relationship between my 2 variables, however, it is a quite week relationship.This was quite suprising to me as I thought it would be a stronger relationship. 
+
+```{r}
+critic_score_model <- modeling_data %>% 
+  filter(!is.na(Critic_Score)) %>% 
+ggplot(mapping=aes(x=Critic_Score, y=Global_Sales))+
+  geom_jitter()+
+  labs(x = "Critic Score", y = "Global Sales", title = "Scatter Plot of relationship between Critic Score and Global Sales")+
+  geom_smooth(method = lm, se = FALSE)
+critic_score_model
+```
+
+I also made another scatter plot to see the relationship between global sales and critic score. This time I included a regression line. With the regression line, I saw a positive relationship as observed by my correlation coefficient, the higher the critic score, the higher the global sales.
+
+```{r}
+global_sales_model <- lm(Global_Sales~Critic_Score, data=modeling_data)
+  get_regression_table(global_sales_model)
+```
+Now it was time to run regression. After running my regression code, I learned some new information. The intercept estimate of -1.69 told  me that average global sales of games that had a critic score of 0 were -1.69. However, this does not make sense, as there was no game in the dataset that had a critic score of 0 and the intercept can't be negative since, I have a positive relationship. The estimated critic score or the slope told me something more useful. The value of 0.035 tells me that for every increase in one unit in critic score, there was an average increase of 0.035 in global sales. This means as a game scored a point higher,on average, it made 35,000 more in global sales. However, since it a average value, it is not true for all games. 
+
+
+```{r}
+regression_points <- get_regression_points(global_sales_model)
+regression_points
+```
+
+To figure out how far the values on the regression line are from the observed values, I ran the code above. I found out that biggest residual value was 34.3. The observed value for that game was 35.5 and the fitted value was 1.18. This tells me that the my fitted regression model was not very close in predicting the value of the game with the highest sales. 
+
+
+
+## User Score
+```{r}
+ modeling_data %>% 
+filter(!is.na(User_Score)) %>% 
+    filter(User_Score!="tbd") %>% 
+  mutate(User_Score= as.numeric(User_Score)) %>%  
+  select(Global_Sales, User_Score) %>% 
+  skim()
+
+```
+
+After doing the initial exploration of user score, it was time to make a model to figure out what the effect of the relationship of these two variable was. First, I ran some skim stats. The new information I learned was that user score distribution was left skewed. I also found out that the middle 50% of the user score is between 7.5 and 9.7. This tells me that a lot of the games do have a high user score. 
+
+```{r}
+modeling_data %>% 
+  filter(!is.na(User_Score)) %>% 
+    filter(User_Score!="tbd") %>% 
+  mutate(User_Score= as.numeric(User_Score)) %>% 
+  get_correlation(formula=Global_Sales ~ User_Score)
+```
+
+I used this function to get my correlation coefficient between global sales and user score. The correlation coefficient was 0.0987, this tells me that the their is a weakly positive relationship between the two variables. This correlation between user score and global sales is even lower than the correlation between critic score and global sales.   
+```{r}
+User_score_model <- modeling_data %>% 
+ filter(!is.na(User_Score)) %>% 
+    filter(User_Score!="tbd") %>% 
+  mutate(User_Score= as.numeric(User_Score)) %>% 
+ggplot(mapping=aes(x=User_Score, y=Global_Sales))+
+  geom_jitter()+
+  labs(x = "User_Score", y = "Global Sales", title = "Scatter Plot of relationship between User Score and Global Sales")+
+  geom_smooth(method = lm, se = FALSE)
+User_score_model
+
+```
+
+I also made a scatter plot here to see the relationship between user score and global sales with the regression line fitted in. The regression fitted line is more straighter than the previous char of critic score and global sales. I think this is because the correlation coefficient is smaller than the chart with critic score and global sales but their but you can see that their is still a relationship between these two variables, even though it is not very strong. The graph seems to illustrate that a higher user score will lead to a higher global sales amount. 
+
+```{r}
+fixed_user_score <- modeling_data %>% 
+  filter(!is.na(User_Score)) %>% 
+    filter(User_Score!="tbd") %>% 
+  mutate(User_Score= as.numeric(User_Score))
+
+  
+  
+  global_sales_model_2 <- lm(Global_Sales~User_Score, data=fixed_user_score)
+  get_regression_table(global_sales_model_2)
+  
+```
+
+After running my regression, I focused on the user score estimate not the intercept because again, it does not make much sense as I do not have any game with a user score of 0. The user score estimate or the slope told me that The value of 0.117 tells me that for every increase in one unit in user score, there was an average increase of 0.117 in global sales. This means as a game scored a point higher,on average, it made 117,000 more in global sales. This was suprising to me because correlation coefficient was so much more lower than the one for critic score but the slope is higher. I think this very accurate because again this is on average. 
+```{r}
+regression_points_2 <- get_regression_points(global_sales_model_2)
+regression_points_2
+```
+
+Again, I wrote the function above to find the difference in the observed values and the values on the regression values. I looked at the game with the most global sales and the residual value for that was 34.6. This tells me that the fitted regression model is not very accurate in predicting the values of the games with the highest sales even more so than my previous model. 
+
+
+## Regression Thoughts 
+
+After making and running two models with numeric variables, I had learned how to get the correlation coefficient and run regression on the model. This helps in explaining the relationship between the variables and in explaining the strength of the relationship. It was interesting to see what has more of an effect on global sales and it was interesting to see how accurate the fitted values were in predicting the sales of the games.
+
+
+# Multiple Regression
+
+I ran multiple regression on the same numeric variables to see if there was a difference in the results. The two variables I will be running multiple regression will be critic score and user score. 
+
+```{r}
+multiple_regression_data <- fixed_user_score %>% 
+  filter(!is.na(Critic_Score)) %>% 
+  select(User_Score, Critic_Score, Global_Sales) 
+ 
+multiple_regression_data %>% 
+   cor()
+```
+
+I did not run the skim summary statistics again because I had already done that before and I went straight to the correlation. I found out that the correlation between global sales and global sales is 1 as expected and I saw the correlation between global sales and critic score was 0.27 meaning their is a positive week correlation. The correlation for user score and global sales was even weaker at 0.099 which is suprising to me since user score and critic score are pretty well correlated at 0.57. This makes sense because if a game has a high critic score, it probably has a high user score as well. Theoretically, than user score should also probably be more highly correlated. 
+```{r}
+multiple_regression_data %>% 
+  ggplot(mapping=aes(y=Global_Sales, x=Critic_Score))+
+  geom_point()+
+  labs(x="Critic Score", y="Global Sales (in$)", title="Global Sales and Critic Score")+
+  geom_smooth(method="lm", se=FALSE)
+
+multiple_regression_data %>% 
+  ggplot(mapping=aes(y=Global_Sales, x=User_Score))+
+  geom_point()+
+  labs(x="User Score", y="Global Sales (in$)", title="Global Sales and User Score")+
+  geom_smooth(method="lm", se=FALSE)
+
+
+```
+
+These are the same scatter plots as the ones above that show the relationship between global sales, critic score and user score. The global sales and critic score graph shows a positive relationship between the two. The higher the user score, the higher the global sales tends to be. This also seems to be the case with global sales and user score but it is a much weaker relationship as seen by the smoothing line, this weak relationship could also be seen by the correlation coefficient. 
+```{r}
+multiple_regression_model <- lm(Global_Sales ~ Critic_Score + User_Score, data=multiple_regression_data)
+get_regression_table(multiple_regression_model)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
